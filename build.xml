@@ -1,0 +1,90 @@
+<?xml version="1.0"  encoding="UTF-8"?>
+<project name="jreplace" default="build" basedir=".">
+
+  <echo message="pulling in property files" />
+  <property file="build.properties" />
+
+  <!-- === 编译时依赖的classpath === -->
+  <path id="classpath">
+    <fileset dir="${basedir}/lib" includes="**/*.jar" />
+  </path>
+
+  <target name="clean">
+    <delete dir="${build.target.dir}" />
+    <mkdir dir="${build.target.dir}" />
+  </target>
+
+  <target name="compile" depends="clean">
+    <echo message="compile source java files..." />
+    <mkdir dir="${build.target.dir}/bin" />
+    <javac srcdir="src/main/java" destdir="${build.target.dir}/bin" source="1.5" target="1.5" debug="on">
+      <classpath refid="classpath" />
+    </javac>
+    <copy todir="${build.target.dir}/bin" includeemptydirs="false">
+      <fileset dir="src/main/java">
+        <exclude name="**/*.java" />
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="build" depends="compile,build.simple.jar">
+    <unzip dest="${build.target.dir}/bin">
+      <patternset>
+        <exclude name="META-INF/**" />
+      </patternset>
+      <fileset dir="${basedir}/lib">
+        <include name="**/*.jar" />
+      </fileset>
+    </unzip>
+    <jar destfile="${build.target.dir}/${component.name}-${component.version}.jar" basedir="${build.target.dir}/bin">
+      <manifest>
+        <attribute name="Specification-Title" value="${component.title}" />
+        <attribute name="Specification-Version" value="${component.version}" />
+        <attribute name="Author" value="${component.author}" />
+        <attribute name="Main-Class" value="${mf.mainclass}" />
+      </manifest>
+    </jar>
+  </target>
+
+  <target name="build.simple.jar" depends="compile">
+    <copy todir="${build.target.dir}/lib" includeemptydirs="false">
+      <fileset dir="${basedir}/lib">
+        <include name="**/*.jar" />
+      </fileset>
+    </copy>
+    <pathconvert property="mf.classpath" pathsep=" " description="把上面定义的path转换成property，path中jar包的路径用空格分开">
+      <mapper>
+        <chainedmapper>
+          <!-- 移除绝对路径 -->
+          <flattenmapper />
+          <!-- 加上lib前缀 -->
+          <globmapper from="*" to="lib/*" />
+        </chainedmapper>
+      </mapper>
+      <path refid="classpath" description="path引用了上面定义的queue-classpath" />
+    </pathconvert>
+    <jar destfile="${build.target.dir}/${component.name}-simple-${component.version}.jar" basedir="${build.target.dir}/bin">
+      <manifest>
+        <attribute name="Specification-Title" value="${component.title}" />
+        <attribute name="Specification-Version" value="${component.version}" />
+        <attribute name="Author" value="${component.author}" />
+        <attribute name="Main-Class" value="${mf.mainclass}" />
+        <attribute name="Class-Path" value="${mf.classpath}" />
+      </manifest>
+    </jar>
+  </target>
+
+<!-- meger html & js Compress -->
+  <target name="test" depends="build">
+   <mkdir dir="${build.target.dir}/test-result" />
+    <!-- java -jar jreplace.jar d:/temp/hello.html d:/output/hello.html-->
+    <apply executable="java" parallel="false" failonerror="true">
+      <fileset dir="${test.resources}" includes="**/*.html" />
+      <arg line="-jar" />
+      <arg path="${build.target.dir}/${component.name}-${component.version}.jar" />
+      <srcfile/>
+      <mapper type="glob" from="*.html" to="${build.target.dir}/test-result/*.html" />
+      <targetfile />
+    </apply>
+  </target>
+</project>
